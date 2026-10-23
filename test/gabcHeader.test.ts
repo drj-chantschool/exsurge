@@ -205,6 +205,36 @@ describe("Gabc.applyHeader", function() {
     assert.strictEqual(s.annotation, null);
   });
 
+  it("makes the text on the right from the commentary header", function() {
+    const { score: s } = score("commentary: Ps. 94;\n");
+    assert(s.titles!.textRight);
+    assert.strictEqual(s.titles!.textRight!.text, "Ps. 94");
+  });
+
+  it("puts a commentary written over several lines on one line", function() {
+    const { score: s } = score("commentary: Ps.\n94;;\n");
+    assert.strictEqual(s.titles!.textRight!.text, "Ps. 94");
+  });
+
+  it("makes no text on the right without a commentary, or if commentary is false", function() {
+    assert.strictEqual(score("name: Kyrie;\n").score.titles!.textRight, null);
+    assert.strictEqual(score("commentary: Ps. 94;\n", { commentary: false }).score.titles!.textRight, null);
+  });
+
+  it("keeps text on the right that the score already has, and replaces its own commentary", function() {
+    const ctxt = new ChantContext();
+    const gabc = (header: string) => header + "%%\n" + chant;
+    const s = new ChantScore(ctxt, Gabc.createMappingsFromSource(ctxt, gabc("")), true);
+    Gabc.applyHeader(s, ctxt, new GabcHeader(gabc("commentary: one;\n")));
+    Gabc.applyHeader(s, ctxt, new GabcHeader(gabc("commentary: two;\n")));
+    assert.strictEqual(s.titles!.textRight!.text, "two");
+    Gabc.applyHeader(s, ctxt, new GabcHeader(gabc("name: Kyrie;\n")));
+    assert.strictEqual(s.titles!.textRight, null);
+    s.titles!.setTextRight(ctxt, "mine");
+    Gabc.applyHeader(s, ctxt, new GabcHeader(gabc("commentary: three;\n")));
+    assert.strictEqual(s.titles!.textRight!.text, "mine");
+  });
+
   it("has the score laid out again for the settings it changes", function() {
     const ctxt = new ChantContext();
     const gabc = "staff-lines: 5;\nlanguage: English;\n%%\n" + chant;

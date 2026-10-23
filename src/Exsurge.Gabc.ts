@@ -746,6 +746,8 @@ export interface ApplyHeaderOptions {
    * the header has no annotation
    */
   mode?: boolean;
+  /** commentary, as the score's text on the right, flush right above the staff, as Gregorio sets it */
+  commentary?: boolean;
   /** staff-lines, as the score's staffLineCount */
   staffLines?: boolean;
   /** language, as the language of the score's lyrics */
@@ -806,6 +808,10 @@ const __languagesByCenteringScheme: { [scheme: string]: Language } = {
 // the annotations that Gabc.applyHeader() made, which it replaces when it's
 // called again
 const __headerAnnotations = new WeakSet<Annotation | Annotations>();
+
+// the commentaries (text on the right) that Gabc.applyHeader() made, which it
+// replaces when it's called again
+const __headerCommentaries = new WeakSet<object>();
 
 const __romanModeNumbers = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii"];
 
@@ -1006,6 +1012,8 @@ export class Gabc {
    * - annotation: the first two, one line each, as the score's annotation.
    * - mode, mode-modifier and mode-differentia, if there is no annotation
    *   header: one line, as the score's annotation (see modeText()).
+   * - commentary: one line, as the score's text on the right (flush right
+   *   above the score, where Gregorio's \grecommentary puts it).
    * - staff-lines: 2 to 5, as the score's staffLineCount.
    * - language: Latin, English, Spanish, Church Slavonic (also for Polish,
    *   Czech and Slovak, as in Gregorio) or Hungarian, by name or ISO 639
@@ -1019,7 +1027,7 @@ export class Gabc {
    *
    * A score that already has an annotation that this didn't make keeps it,
    * and gets no mode line, as in Gregorio, where an annotation set in TeX
-   * wins over the header.
+   * wins over the header.  Likewise for text on the right and the commentary.
    */
   static applyHeader(
     score: ChantScore,
@@ -1050,6 +1058,13 @@ export class Gabc {
       }
       if (annotation) __headerAnnotations.add(annotation);
       score.annotation = annotation;
+    }
+
+    var titles = score.titles;
+    if (titles && (!titles.textRight || __headerCommentaries.has(titles.textRight))) {
+      var commentary = options.commentary !== false ? headerText(header.commentary) : "";
+      titles.setTextRight(ctxt, commentary || undefined);
+      if (titles.textRight) __headerCommentaries.add(titles.textRight);
     }
 
     var staffLineCount = parseInt(headerText(header["staff-lines"]), 10);
