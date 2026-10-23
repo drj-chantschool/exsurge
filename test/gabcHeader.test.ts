@@ -205,34 +205,34 @@ describe("Gabc.applyHeader", function() {
     assert.strictEqual(s.annotation, null);
   });
 
-  it("makes the text on the right from the commentary header", function() {
+  it("makes the commentary from the commentary header", function() {
     const { score: s } = score("commentary: Ps. 94;\n");
-    assert(s.titles!.textRight);
-    assert.strictEqual(s.titles!.textRight!.text, "Ps. 94");
+    assert(s.titles!.commentary);
+    assert.strictEqual(s.titles!.commentary!.text, "Ps. 94");
   });
 
   it("puts a commentary written over several lines on one line", function() {
     const { score: s } = score("commentary: Ps.\n94;;\n");
-    assert.strictEqual(s.titles!.textRight!.text, "Ps. 94");
+    assert.strictEqual(s.titles!.commentary!.text, "Ps. 94");
   });
 
-  it("makes no text on the right without a commentary, or if commentary is false", function() {
-    assert.strictEqual(score("name: Kyrie;\n").score.titles!.textRight, null);
-    assert.strictEqual(score("commentary: Ps. 94;\n", { commentary: false }).score.titles!.textRight, null);
+  it("makes no commentary without a commentary, or if commentary is false", function() {
+    assert.strictEqual(score("name: Kyrie;\n").score.titles!.commentary, null);
+    assert.strictEqual(score("commentary: Ps. 94;\n", { commentary: false }).score.titles!.commentary, null);
   });
 
-  it("keeps text on the right that the score already has, and replaces its own commentary", function() {
+  it("keeps commentary that the score already has, and replaces its own commentary", function() {
     const ctxt = new ChantContext();
     const gabc = (header: string) => header + "%%\n" + chant;
     const s = new ChantScore(ctxt, Gabc.createMappingsFromSource(ctxt, gabc("")), true);
     Gabc.applyHeader(s, ctxt, new GabcHeader(gabc("commentary: one;\n")));
     Gabc.applyHeader(s, ctxt, new GabcHeader(gabc("commentary: two;\n")));
-    assert.strictEqual(s.titles!.textRight!.text, "two");
+    assert.strictEqual(s.titles!.commentary!.text, "two");
     Gabc.applyHeader(s, ctxt, new GabcHeader(gabc("name: Kyrie;\n")));
-    assert.strictEqual(s.titles!.textRight, null);
-    s.titles!.setTextRight(ctxt, "mine");
+    assert.strictEqual(s.titles!.commentary, null);
+    s.titles!.setCommentary(ctxt, "mine");
     Gabc.applyHeader(s, ctxt, new GabcHeader(gabc("commentary: three;\n")));
-    assert.strictEqual(s.titles!.textRight!.text, "mine");
+    assert.strictEqual(s.titles!.commentary!.text, "mine");
   });
 
   it("has the score laid out again for the settings it changes", function() {
@@ -358,5 +358,48 @@ describe("Gabc.applyHeader", function() {
 
     const latine = score("centering-scheme: latine;\nlanguage: English;\n", { legacy: true });
     assert.deepStrictEqual(lyricLanguages(latine.score), [language.latin, language.latin, language.latin]);
+  });
+});
+
+describe("commentary", function() {
+  const chant = "(c4) Ky(f)ri(g)e(h) (::)";
+  function svgOf(ctxt: ChantContext, header: string) {
+    const gabc = header + "%%\n" + chant;
+    const s = new ChantScore(ctxt, Gabc.createMappingsFromSource(ctxt, gabc), true);
+    Gabc.applyHeader(s, ctxt, new GabcHeader(gabc));
+    s.performLayout(ctxt);
+    let svg = "";
+    s.layoutChantLines(ctxt, 600, () => { svg = s.createSvg(ctxt); });
+    return { s, svg };
+  }
+
+  it("is in italics, in its own style, by default", function() {
+    const ctxt = new ChantContext();
+    assert.strictEqual(ctxt.textStyles.commentary.prefix, "<i>");
+    const { svg } = svgOf(ctxt, "commentary: Ps. 94;\n");
+    assert(svg.includes("Ps. 94"), svg);
+    assert(svg.includes("commentary"), svg);
+    assert(svg.includes("italic"), svg);
+  });
+
+  it("can be restyled without touching other titles", function() {
+    const ctxt = new ChantContext();
+    ctxt.textStyles.commentary.prefix = "";
+    ctxt.textStyles.commentary.size = 20;
+    assert.strictEqual(ctxt.textStyles.leftRight.size, ctxt.textStyles.leftRight.size);
+    assert.notStrictEqual(ctxt.textStyles.leftRight.size, 20);
+    const { s } = svgOf(ctxt, "commentary: Ps. 94;\n");
+    assert.strictEqual(s.titles!.commentary!.textType!.key, "commentary");
+  });
+
+  it("moves with commentaryRaise", function() {
+    const heights = [-2, 0, 2].map((raise) => {
+      const ctxt = new ChantContext();
+      ctxt.commentaryRaise = raise;
+      const { s } = svgOf(ctxt, "name: x;\ncommentary: Ps. 94;\n");
+      return s.titles!.commentary!.bounds.y;
+    });
+    assert(heights[0] > heights[1], heights.join());
+    assert(heights[1] >= heights[2], heights.join());
   });
 });

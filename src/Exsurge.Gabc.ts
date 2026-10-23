@@ -746,7 +746,7 @@ export interface ApplyHeaderOptions {
    * the header has no annotation
    */
   mode?: boolean;
-  /** commentary, as the score's text on the right, flush right above the staff, as Gregorio sets it */
+  /** commentary, as the score's commentary: flush right above the staff, in italics, as Gregorio sets it */
   commentary?: boolean;
   /** staff-lines, as the score's staffLineCount */
   staffLines?: boolean;
@@ -809,7 +809,7 @@ const __languagesByCenteringScheme: { [scheme: string]: Language } = {
 // called again
 const __headerAnnotations = new WeakSet<Annotation | Annotations>();
 
-// the commentaries (text on the right) that Gabc.applyHeader() made, which it
+// the commentaries that Gabc.applyHeader() made, which it
 // replaces when it's called again
 const __headerCommentaries = new WeakSet<object>();
 
@@ -1012,8 +1012,9 @@ export class Gabc {
    * - annotation: the first two, one line each, as the score's annotation.
    * - mode, mode-modifier and mode-differentia, if there is no annotation
    *   header: one line, as the score's annotation (see modeText()).
-   * - commentary: one line, as the score's text on the right (flush right
-   *   above the score, where Gregorio's \grecommentary puts it).
+   * - commentary: one line, as the score's commentary (flush right above the
+   *   score, in italics, where Gregorio's \grecommentary puts it).  Style it
+   *   with ctxt.textStyles.commentary and ctxt.commentaryRaise.
    * - staff-lines: 2 to 5, as the score's staffLineCount.
    * - language: Latin, English, Spanish, Church Slavonic (also for Polish,
    *   Czech and Slovak, as in Gregorio) or Hungarian, by name or ISO 639
@@ -1027,7 +1028,7 @@ export class Gabc {
    *
    * A score that already has an annotation that this didn't make keeps it,
    * and gets no mode line, as in Gregorio, where an annotation set in TeX
-   * wins over the header.  Likewise for text on the right and the commentary.
+   * wins over the header.  Likewise for the commentary.
    */
   static applyHeader(
     score: ChantScore,
@@ -1061,10 +1062,10 @@ export class Gabc {
     }
 
     var titles = score.titles;
-    if (titles && (!titles.textRight || __headerCommentaries.has(titles.textRight))) {
+    if (titles && (!titles.commentary || __headerCommentaries.has(titles.commentary))) {
       var commentary = options.commentary !== false ? headerText(header.commentary) : "";
-      titles.setTextRight(ctxt, commentary || undefined);
-      if (titles.textRight) __headerCommentaries.add(titles.textRight);
+      titles.setCommentary(ctxt, commentary || undefined);
+      if (titles.commentary) __headerCommentaries.add(titles.commentary);
     }
 
     var staffLineCount = parseInt(headerText(header["staff-lines"]), 10);

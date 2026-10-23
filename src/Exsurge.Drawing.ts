@@ -222,6 +222,7 @@ export interface TextTypes {
   title: SingleTextType<ScoreWithTitles>;
   subtitle: SingleTextType<ScoreWithTitles>;
   leftRight: TextType<ScoreWithTitles> & TextTypeWithSvgElem<ScoreWithTitles>;
+  commentary: SingleTextType<ScoreWithTitles>;
   annotation: TextType & TextTypeWithSvgElem;
   dropCap: SingleTextType;
   al: TextType & TextTypeWithSvgElem;
@@ -284,6 +285,12 @@ const textTypeDefinitions: TextTypeDefinitions = {
       score.titles[
         elem.classList.contains("textRight") ? "textRight" : "textLeft"
       ]
+  },
+  commentary: {
+    display: "Commentary",
+    defaultSize: (size) => (size * 5) / 6, // Gregorio's footnote size
+    containedInScore: (score) => score.titles.hasCommentary(),
+    getFromScore: (score) => score.titles.commentary
   },
   annotation: {
     display: "Annotation",
@@ -899,6 +906,8 @@ export type TextTypeStyles = {
   title: TextStyleWithAlignment & TextStyleWithPadding;
   subtitle: TextStyleWithAlignment & TextStyleWithPadding;
   leftRight: TextStyleWithPadding;
+  /** the commentary is italic by default, as Gregorio sets it */
+  commentary: TextStyleWithPadding;
   annotation: TextStyleWithStaffPadding;
   dropCap: TextStyleWithStaffPadding;
   choralSign: {
@@ -1016,6 +1025,14 @@ export class ChantContext {
   minLedgerSeparation: number;
   minSpaceAboveStaff: number;
   minSpaceBelowStaff: number;
+  /**
+   * How far to raise (positive) or lower (negative) the commentary from its
+   * default position, a multiple of staffInterval: Gregorio's
+   * \grechangedim{commentaryraise}.  The space between the lines of a
+   * commentary of several lines (commentaryseparation) is
+   * textStyles.commentary.lineHeight.
+   */
+  commentaryRaise: number;
   spaceBetweenSystems: number;
 
   minNotesLastLine: number;
@@ -1288,6 +1305,8 @@ export class ChantContext {
 
     this.textStyles.al.prefix = "<i>";
 
+    this.textStyles.commentary.prefix = "<i>";
+
     this.textStyles.translation.prefix = "<i>";
 
     this.textStyles.dropCap.padding = 1; // minimum padding on either side of drop cap in staffIntervals
@@ -1297,6 +1316,7 @@ export class ChantContext {
     this.minLedgerSeparation = 2; // multiple of staffInterval
     this.minSpaceAboveStaff = 2; // multiple of staffInterval
     this.minSpaceBelowStaff = 1; // multiple of staffInterval
+    this.commentaryRaise = 0; // multiple of staffInterval
     this.spaceBetweenSystems = 1.5; // multiple of staffInterval
 
     // everything depends on the scale of the punctum
@@ -4782,6 +4802,27 @@ export class TextLeftRight extends TitleTextElement {
 
   getCssClasses() {
     return this.extraClass + " " + super.getCssClasses();
+  }
+}
+
+/** The commentary: flush right above the score, in the commentary text style. */
+export class Commentary extends TitleTextElement {
+  constructor(ctxt: ChantContext, text: string, sourceIndex?: number) {
+    super(
+      ctxt,
+      (ctxt.textStyles.commentary.prefix || "") + text,
+      (ctxt) => ctxt.textStyles.commentary.font,
+      (ctxt) => ctxt.textStyles.commentary.size,
+      "end",
+      sourceIndex,
+      text,
+      TextTypes.commentary
+    );
+    this.padding = (ctxt: ChantContext) =>
+      (Number(ctxt.textStyles.commentary.padding) || 1) * ctxt.textStyles.commentary.size / 5;
+
+    // measured again, since TextElement measured it before the padding was set
+    this.recalculateMetrics(ctxt);
   }
 }
 

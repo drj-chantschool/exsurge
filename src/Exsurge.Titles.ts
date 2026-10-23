@@ -25,7 +25,7 @@
 
 import { Rect } from "./Exsurge.Core.js";
 import {
-  ChantLayoutElement, QuickSvg, Subtitle, Supertitle, TextLeftRight, Title,
+  ChantLayoutElement, Commentary, QuickSvg, Subtitle, Supertitle, TextLeftRight, Title,
   type ChantContext,
   type SvgElementWithSource,
   type SvgTreeNode
@@ -39,6 +39,7 @@ export interface TitlesText {
   subtitle?: string;
   textLeft?: string;
   textRight?: string;
+  commentary?: string;
 }
 
 export class Titles extends ChantLayoutElement {
@@ -49,12 +50,13 @@ export class Titles extends ChantLayoutElement {
   subtitle!: Subtitle | null;
   textLeft!: TextLeftRight | null;
   textRight!: TextLeftRight | null;
+  commentary!: Commentary | null;
   svg?: SvgElementWithSource;
 
   constructor(
     ctxt: ChantContext,
     score: ChantScore,
-    { supertitle, title, subtitle, textLeft, textRight }: TitlesText = {}
+    { supertitle, title, subtitle, textLeft, textRight, commentary }: TitlesText = {}
   ) {
     super();
     this.score = score;
@@ -63,6 +65,7 @@ export class Titles extends ChantLayoutElement {
     this.setSubtitle(ctxt, subtitle);
     this.setTextLeft(ctxt, textLeft);
     this.setTextRight(ctxt, textRight);
+    this.setCommentary(ctxt, commentary);
   }
 
   setBoundsX(
@@ -125,6 +128,21 @@ export class Titles extends ChantLayoutElement {
       this.subtitle.bounds.y += this.subtitle.origin.y;
       y += this.subtitle.bounds.height + this.subtitle.padding(ctxt);
     }
+    // the commentary is flush right, raised (or lowered) by ctxt.commentaryRaise
+    // from where it would be, which moves the space the titles take with it
+    let commentaryRaise = ctxt.commentaryRaise * ctxt.staffInterval;
+    if (this.commentary) {
+      this.commentary.recalculateMetrics(ctxt);
+      this.commentary.bounds.x = width;
+      this.commentary.bounds.y = Math.max(0, y - commentaryRaise);
+      this.bounds.union(this.commentary.bounds);
+      this.commentary.bounds.y += this.commentary.origin.y;
+      y = Math.max(
+        y,
+        this.commentary.bounds.y - this.commentary.origin.y +
+          this.commentary.bounds.height + this.commentary.padding(ctxt)
+      );
+    }
     let finalY = y,
       textLeft = this.score.overrideTextLeft || this.textLeft;
     if (textLeft) {
@@ -162,6 +180,9 @@ export class Titles extends ChantLayoutElement {
       ? new TextLeftRight(ctxt, textLeft, "textLeft")
       : null;
   }
+  setCommentary(ctxt: ChantContext, commentary?: string) {
+    this.commentary = commentary ? new Commentary(ctxt, commentary) : null;
+  }
   setTextRight(ctxt: ChantContext, textRight?: string) {
     this.textRight = textRight
       ? new TextLeftRight(ctxt, textRight, "textRight")
@@ -183,6 +204,9 @@ export class Titles extends ChantLayoutElement {
   hasTextRight(ctxt?: ChantContext, textRight?: string) {
     return !!this.textRight;
   }
+  hasCommentary(ctxt?: ChantContext, commentary?: string) {
+    return !!this.commentary;
+  }
 
   draw(ctxt: ChantContext, scale = 1) {
     var canvasCtxt = ctxt.canvasCtxt!;
@@ -193,7 +217,8 @@ export class Titles extends ChantLayoutElement {
       this.title,
       this.subtitle,
       this.score.overrideTextLeft || this.textLeft,
-      this.textRight
+      this.textRight,
+      this.commentary
     ]) {
       if (el) el.draw(ctxt);
     }
@@ -212,7 +237,8 @@ export class Titles extends ChantLayoutElement {
       this.title,
       this.subtitle,
       this.score.overrideTextLeft || this.textLeft,
-      this.textRight
+      this.textRight,
+      this.commentary
     ]) {
       if (el) nodes.push(el[functionName](ctxt));
     }
@@ -248,7 +274,8 @@ export class Titles extends ChantLayoutElement {
       this.title,
       this.subtitle,
       this.score.overrideTextLeft || this.textLeft,
-      this.textRight
+      this.textRight,
+      this.commentary
     ]) {
       if (el) fragment += el.createSvgFragment(ctxt);
     }
